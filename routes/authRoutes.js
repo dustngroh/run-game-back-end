@@ -23,7 +23,7 @@ router.post("/register", async (req, res) => {
         // Check if user already exists
         const existingUser = await pool.query("SELECT * FROM users WHERE username = $1", [username]);
         if (existingUser.rows.length > 0) {
-            return res.status(400).json({ message: "User already exists" });
+            return res.status(400).json({ type: "register", message: "User already exists" });
         }
 
         // Hash the password    
@@ -32,10 +32,10 @@ router.post("/register", async (req, res) => {
         // Insert new user into database
         await pool.query("INSERT INTO users (username, password_hash) VALUES ($1, $2)", [username, hashedPassword]);
 
-        res.status(201).json({ message: "User registered successfully" });
+        res.status(201).json({ type: "register", message: "User registered successfully" });
     } catch (error) {
         console.error("Error registering user", error);
-        res.status(500).json({ message: "Internal server error" });
+        res.status(500).json({ type: "register", message: "Internal server error" });
     }
 });
 
@@ -47,22 +47,22 @@ router.post("/login", async (req, res) => {
         // Check if user exists
         const user = await pool.query("SELECT * FROM users WHERE username = $1", [username]);
         if (user.rows.length === 0) {
-            return res.status(401).json({ message: "Invalid credentials" });
+            return res.status(401).json({ type: "login", message: "Invalid credentials" });
         }
         
         // Check password
         const validPassword = await bcrypt.compare(password, user.rows[0].password_hash);
         if (!validPassword) {
-            return res.status(401).json({ message: "Invalid credentials" });
+            return res.status(401).json({ type: "login", message: "Invalid credentials" });
         }
         
         // Generate a JWT token
         const token = jwt.sign({ userId: user.rows[0].id }, secretKey, { expiresIn: "1h" });
 
-        res.json({ token, username: user.rows[0].username });
+        res.json({ type: "login", token, username: user.rows[0].username });
     } catch (error) {
         console.error("Error logging in", error);
-        res.status(500).json({ message: "Internal server error" });
+        res.status(500).json({ type: "login", message: "Internal server error" });
     }
 });
 
