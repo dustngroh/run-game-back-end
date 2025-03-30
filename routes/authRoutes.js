@@ -32,7 +32,7 @@ router.post("/register", async (req, res) => {
         // Insert new user into database
         await pool.query("INSERT INTO users (username, password_hash) VALUES ($1, $2)", [username, hashedPassword]);
 
-        res.status(201).json({ type: "register", message: "User registered successfully" });
+        res.status(201).json({ type: "register", message: "User registered successfully", username });
     } catch (error) {
         console.error("Error registering user", error);
         res.status(500).json({ type: "register", message: "Internal server error" });
