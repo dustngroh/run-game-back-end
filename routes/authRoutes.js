@@ -79,4 +79,17 @@ const verifyToken = (req, res, next) => {
     });
 };
 
+// Validate token route
+router.get("/validate-token", verifyToken, async (req, res) => {
+    try {
+        const result = await pool.query("SELECT username FROM users WHERE id = $1", [req.userId]);
+        const username = result.rows[0].username || "Unknown";
+
+        res.json({ valid: true, username });
+    } catch (error) {
+        console.error("Error validating token", error);
+        res.status(500).json({ valid: false, message: "Internal server error" });
+    }
+});
+
 module.exports = { router, verifyToken };
