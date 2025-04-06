@@ -85,10 +85,10 @@ router.get("/validate-token", verifyToken, async (req, res) => {
         const result = await pool.query("SELECT username FROM users WHERE id = $1", [req.userId]);
         const username = result.rows[0].username || "Unknown";
 
-        res.json({ valid: true, username });
+        res.json({ type: "validate-token", valid: true, username });
     } catch (error) {
         console.error("Error validating token", error);
-        res.status(500).json({ valid: false, message: "Internal server error" });
+        res.status(500).json({ type: "validate-token", valid: false, message: "Internal server error" });
     }
 });
 
