@@ -29,7 +29,7 @@ router.post("/", verifyToken, async (req, res) => {
         const existingTime = existing.rows[0].completion_time;
   
         if (completion_time >= existingTime) {
-          return res.status(200).json({ message: "Existing time is faster or equal. Submission ignored." });
+          return res.status(200).json({ type: "submit-score", message: "Existing time is faster or equal. Submission ignored." });
         }
   
         // Update the existing time since new one is better
@@ -38,7 +38,7 @@ router.post("/", verifyToken, async (req, res) => {
           [completion_time, userId, level_number]
         );
   
-        return res.status(200).json({ message: "Time updated with new faster time." });
+        return res.status(200).json({ type: "submit-score", message: "Time updated with new faster time." });
       }
   
       // Insert new time if none exists
@@ -47,10 +47,10 @@ router.post("/", verifyToken, async (req, res) => {
         [userId, level_number, completion_time]
       );
   
-      res.status(201).json({ message: "Time submitted successfully" });
+      res.status(201).json({ type: "submit-score", message: "Time submitted successfully" });
     } catch (error) {
       console.error("Error submitting time", error);
-      res.status(500).json({ message: "Internal server error" });
+      res.status(500).json({ type: "submit-score", message: "Internal server error" });
     }
 });
   
@@ -58,24 +58,32 @@ router.post("/", verifyToken, async (req, res) => {
 // Score retrieval route
 // Get top 10 times for a level
 router.get("/:levelNumber", async (req, res) => {
-  const levelNumber = parseInt(req.params.levelNumber, 10);
-
-  try {
-    const result = await pool.query(
-      `SELECT username, completion_time, timestamp 
-       FROM completion_times 
-       JOIN users ON completion_times.user_id = users.id 
-       WHERE level_number = $1 
-       ORDER BY completion_time ASC 
-       LIMIT 10`,
-      [levelNumber]
-    );
-
-    res.json(result.rows);
-  } catch (error) {
-    console.error("Error fetching leaderboard", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
+    const levelNumber = parseInt(req.params.levelNumber, 10);
+  
+    try {
+      const result = await pool.query(
+        `SELECT username, completion_time, timestamp 
+         FROM completion_times 
+         JOIN users ON completion_times.user_id = users.id 
+         WHERE level_number = $1 
+         ORDER BY completion_time ASC 
+         LIMIT 10`,
+        [levelNumber]
+      );
+  
+      res.json({
+        type: "get-leaderboard",
+        level: levelNumber,
+        scores: result.rows
+      });
+    } catch (error) {
+      console.error("Error fetching leaderboard", error);
+      res.status(500).json({
+        type: "get-leaderboard",
+        message: "Internal server error"
+      });
+    }
 });
+  
 
 module.exports = router;
