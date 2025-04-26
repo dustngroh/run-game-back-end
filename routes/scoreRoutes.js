@@ -15,43 +15,74 @@ const pool = new Pool({
 // Score submission route
 // Submit a new completion time only if it's better than the user's previous time
 router.post("/", verifyToken, async (req, res) => {
-    const { level_number, completion_time } = req.body;
-    const userId = req.userId;
-  
-    try {
-      // Check if user already has a time for this level
+  const { level_number, completion_time } = req.body;
+  const userId = req.userId;
+
+  try {
+      // Check existing time for user
       const existing = await pool.query(
-        "SELECT completion_time FROM completion_times WHERE user_id = $1 AND level_number = $2",
-        [userId, level_number]
+          "SELECT completion_time FROM completion_times WHERE user_id = $1 AND level_number = $2",
+          [userId, level_number]
       );
-  
+
+      let personalRecord = false;
+      let worldRecord = false;
+
       if (existing.rows.length > 0) {
-        const existingTime = existing.rows[0].completion_time;
-  
-        if (completion_time >= existingTime) {
-          return res.status(200).json({ type: "submit-score", message: "Existing time is faster or equal. Submission ignored." });
-        }
-  
-        // Update the existing time since new one is better
-        await pool.query(
-          "UPDATE completion_times SET completion_time = $1, timestamp = NOW() WHERE user_id = $2 AND level_number = $3",
-          [completion_time, userId, level_number]
-        );
-  
-        return res.status(200).json({ type: "submit-score", message: "Time updated with new faster time." });
+          const existingTime = existing.rows[0].completion_time;
+
+          if (completion_time >= existingTime) {
+              return res.status(200).json({ 
+                  type: "submit-score", 
+                  message: "Existing time is faster or equal. Submission ignored." 
+              });
+          }
+
+          // Update user's time
+          await pool.query(
+              "UPDATE completion_times SET completion_time = $1, timestamp = NOW() WHERE user_id = $2 AND level_number = $3",
+              [completion_time, userId, level_number]
+          );
+
+          personalRecord = true;
+      } else {
+          // Insert new time for user
+          await pool.query(
+              "INSERT INTO completion_times (user_id, level_number, completion_time, timestamp) VALUES ($1, $2, $3, NOW())",
+              [userId, level_number, completion_time]
+          );
+
+          personalRecord = true;
       }
-  
-      // Insert new time if none exists
-      await pool.query(
-        "INSERT INTO completion_times (user_id, level_number, completion_time, timestamp) VALUES ($1, $2, $3, NOW())",
-        [userId, level_number, completion_time]
+
+      // Check if this is now the world record
+      const bestTimeResult = await pool.query(
+          `SELECT user_id, completion_time 
+           FROM completion_times 
+           WHERE level_number = $1 
+           ORDER BY completion_time ASC 
+           LIMIT 1`,
+          [level_number]
       );
-  
-      res.status(201).json({ type: "submit-score", message: "Time submitted successfully" });
-    } catch (error) {
+
+      if (bestTimeResult.rows.length > 0) {
+          const bestTimeUserId = bestTimeResult.rows[0].user_id;
+          if (bestTimeUserId === userId) {
+              worldRecord = true;
+          }
+      }
+
+      return res.status(200).json({ 
+          type: "submit-score", 
+          message: "Time submitted successfully.",
+          personalRecord,
+          worldRecord
+      });
+
+  } catch (error) {
       console.error("Error submitting time", error);
       res.status(500).json({ type: "submit-score", message: "Internal server error" });
-    }
+  }
 });
   
 
