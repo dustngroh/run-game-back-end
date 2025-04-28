@@ -19,12 +19,40 @@ router.post("/", verifyToken, async (req, res) => {
     const userId = req.userId;
   
     try {
-      await pool.query(
-        "INSERT INTO endless_distances (user_id, distance) VALUES ($1, $2)",
-        [userId, distance]
+        // Check existing distance for user
+    const existing = await pool.query(
+        "SELECT distance FROM endless_distances WHERE user_id = $1",
+        [userId]
       );
+
+      if (existing.rows.length > 0) {
+        const existingDistance = existing.rows[0].distance;
   
-      res.status(201).json({ type: "submit-distance", message: "Distance submitted successfully." });
+        if (distance <= existingDistance) {
+          return res.status(200).json({ 
+            type: "submit-distance", 
+            message: "Existing distance is further or equal. Submission ignored." 
+          });
+        }
+  
+        // Update user's distance if new one is better
+        await pool.query(
+          "UPDATE endless_distances SET distance = $1, timestamp = NOW() WHERE user_id = $2",
+          [distance, userId]
+        );
+      } else {
+        // No existing distance — insert new
+        await pool.query(
+          "INSERT INTO endless_distances (user_id, distance) VALUES ($1, $2)",
+          [userId, distance]
+        );
+      }
+  
+      res.status(201).json({ 
+        type: "submit-distance", 
+        message: "Distance submitted successfully."
+      });
+      
     } catch (error) {
       console.error("Error submitting distance", error);
       res.status(500).json({ type: "submit-distance", message: "Internal server error" });
