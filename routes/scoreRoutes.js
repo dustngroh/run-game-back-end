@@ -15,7 +15,7 @@ const pool = new Pool({
 // Score submission route
 // Submit a new completion time only if it's better than the user's previous time
 router.post("/", verifyToken, async (req, res) => {
-  const { level_number, completion_time } = req.body;
+  const { level_number, completion_time, replay_data } = req.body;
   const userId = req.userId;
 
   try {
@@ -40,16 +40,16 @@ router.post("/", verifyToken, async (req, res) => {
 
           // Update user's time
           await pool.query(
-              "UPDATE completion_times SET completion_time = $1, timestamp = NOW() WHERE user_id = $2 AND level_number = $3",
-              [completion_time, userId, level_number]
+              "UPDATE completion_times SET completion_time = $1, replay_data = $2, timestamp = NOW() WHERE user_id = $3 AND level_number = $4",
+              [completion_time, replay_data, userId, level_number]
           );
 
           personalRecord = true;
       } else {
           // Insert new time for user
           await pool.query(
-              "INSERT INTO completion_times (user_id, level_number, completion_time, timestamp) VALUES ($1, $2, $3, NOW())",
-              [userId, level_number, completion_time]
+              "INSERT INTO completion_times (user_id, level_number, completion_time, replay_data, timestamp) VALUES ($1, $2, $3, $4, NOW())",
+              [userId, level_number, completion_time, replay_data]
           );
 
           personalRecord = true;
@@ -60,7 +60,7 @@ router.post("/", verifyToken, async (req, res) => {
           `SELECT user_id, completion_time 
            FROM completion_times 
            WHERE level_number = $1 
-           ORDER BY completion_time ASC 
+           ORDER BY completion_time ASC, timestamp ASC 
            LIMIT 1`,
           [level_number]
       );
@@ -97,7 +97,7 @@ router.get("/:levelNumber", async (req, res) => {
          FROM completion_times 
          JOIN users ON completion_times.user_id = users.id 
          WHERE level_number = $1 
-         ORDER BY completion_time ASC 
+         ORDER BY completion_time ASC, timestamp ASC
          LIMIT 10`,
         [levelNumber]
       );
