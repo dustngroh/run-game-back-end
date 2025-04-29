@@ -134,7 +134,7 @@ router.get("/replay/:levelNumber/:username", async (req, res) => {
       [levelNumber, username]
     );
 
-    if (result.rows.length === 0) {
+    if (result.rows.length === 0 || !result.rows[0].replay_data) {
       return res.status(404).json({ type: "get-replay", message: "Replay not found" });
     }
 
