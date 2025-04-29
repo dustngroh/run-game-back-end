@@ -12,7 +12,7 @@ const pool = new Pool({
   }
 });
 
-// Score submission route
+// POST Score submission route
 // Submit a new completion time only if it's better than the user's previous time
 router.post("/", verifyToken, async (req, res) => {
   const { level_number, completion_time, replay_data } = req.body;
@@ -86,7 +86,7 @@ router.post("/", verifyToken, async (req, res) => {
 });
   
 
-// Score retrieval route
+// GET Score route
 // Get top 10 times for a level
 router.get("/:levelNumber", async (req, res) => {
     const levelNumber = parseInt(req.params.levelNumber, 10);
@@ -115,6 +115,38 @@ router.get("/:levelNumber", async (req, res) => {
       });
     }
 });
-  
+
+
+// GET replay route
+// Get replay for a specific user and level
+router.get("/replay/:levelNumber/:username", async (req, res) => {
+  const levelNumber = parseInt(req.params.levelNumber, 10);
+  const username = req.params.username;
+
+  try {
+    const result = await pool.query(
+      `SELECT completion_times.replay_data 
+       FROM completion_times
+       JOIN users ON completion_times.user_id = users.id
+       WHERE completion_times.level_number = $1 AND users.username = $2
+       ORDER BY completion_times.completion_time ASC
+       LIMIT 1`,
+      [levelNumber, username]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ type: "get-replay", message: "Replay not found" });
+    }
+
+    res.json({
+      type: "get-replay",
+      replay_data: result.rows[0].replay_data
+    });
+  } catch (error) {
+    console.error("Error fetching replay", error);
+    res.status(500).json({ type: "get-replay", message: "Internal server error" });
+  }
+});
+
 
 module.exports = router;
