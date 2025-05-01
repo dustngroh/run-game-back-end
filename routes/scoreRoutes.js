@@ -98,7 +98,7 @@ router.get("/:levelNumber", async (req, res) => {
          JOIN users ON completion_times.user_id = users.id 
          WHERE level_number = $1 
          ORDER BY completion_time ASC, timestamp ASC
-         LIMIT 10`,
+         LIMIT 100`,
         [levelNumber]
       );
   
