@@ -118,14 +118,14 @@ router.get("/:levelNumber", async (req, res) => {
 
 
 // GET replay route
-// Get replay for a specific user and level
+// Get replay and completion time for a specific user and level
 router.get("/replay/:levelNumber/:username", async (req, res) => {
   const levelNumber = parseInt(req.params.levelNumber, 10);
   const username = req.params.username;
 
   try {
     const result = await pool.query(
-      `SELECT completion_times.replay_data 
+      `SELECT completion_times.replay_data, completion_times.completion_time
        FROM completion_times
        JOIN users ON completion_times.user_id = users.id
        WHERE completion_times.level_number = $1 AND users.username = $2
@@ -140,7 +140,8 @@ router.get("/replay/:levelNumber/:username", async (req, res) => {
 
     res.json({
       type: "get-replay",
-      replay_data: result.rows[0].replay_data
+      replay_data: result.rows[0].replay_data,
+      completion_time: result.rows[0].completion_time
     });
   } catch (error) {
     console.error("Error fetching replay", error);
